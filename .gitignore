@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.sqlite3
+*.sqlite3-*
+work/
+data/
+extra_memes/
+python-engine/
+*.log

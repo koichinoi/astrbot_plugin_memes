@@ -1,0 +1,26 @@
+{
+  "panel_font_path": {"description": "面板中文字体路径（可选）", "type": "string", "default": "", "hint": "留空时自动使用微软雅黑、Noto Sans CJK 或文泉驿等系统中文字体。可填写 .ttf/.ttc/.otf 绝对路径；无中文字体时请安装字体或在这里指定。"},
+  "engine_python_executable": {"description": "已有 Python 引擎环境的 Python 路径（可选）", "type": "string", "default": "", "hint": "留空时自动建立独立引擎环境并安装 engine_requirements.txt，避免与 AstrBot 的 Pillow 版本冲突。填写路径时使用该环境，需自行先安装 meme-generator==0.1.14。"},
+  "command_prefixes": {"description": "表情命令前缀", "type": "list", "items": {"type": "string"}, "default": [""], "hint": "默认无需前缀，直接发送 表情面板、表情列表、摸 自己 等指令。保留空字符串表示无前缀。"},
+  "disabled_memes": {"description": "永久禁用的模板 key", "type": "list", "items": {"type": "string"}, "default": [], "hint": "优先于聊天命令中的启用开关。修改后保存配置。"},
+  "check_resources_on_startup": {"description": "启动时检查并下载 Python 引擎表情图片", "type": "bool", "default": true, "hint": "首次下载可能较久，详细进度见 python-engine/engine.log；需要对独立引擎安装目录有写权限，字体需另行安装。"},
+  "use_sender_when_no_image": {"description": "缺少单张图片时使用发送者头像", "type": "bool", "default": false},
+  "use_sender_for_two_images": {"description": "需要两张图但只提供一张时，补入发送者头像", "type": "bool", "default": true},
+  "use_default_when_no_text": {"description": "未输入文字时使用模板默认文字", "type": "bool", "default": false},
+  "random_show_info": {"description": "随机制作时显示模板名称", "type": "bool", "default": true},
+  "allow_group_admin": {"description": "允许 OneBot QQ 群主和管理员管理本群表情开关", "type": "bool", "default": true, "hint": "全局开关仍仅限 AstrBot 管理员；其他平台仅识别 AstrBot 管理员。"},
+  "params_mismatch_policy": {
+    "description": "图片和文字数量不匹配时的处理", "type": "object",
+    "items": {
+      "too_few_image": {"description": "图片不足", "type": "string", "options": ["prompt", "get", "ignore"], "default": "prompt", "hint": "prompt 提示，get 等待补充，ignore 忽略"},
+      "too_few_text": {"description": "文字不足", "type": "string", "options": ["prompt", "get", "ignore"], "default": "prompt"},
+      "too_much_image": {"description": "图片过多", "type": "string", "options": ["prompt", "drop", "ignore"], "default": "prompt", "hint": "drop 丢弃超出的输入"},
+      "too_much_text": {"description": "文字过多", "type": "string", "options": ["prompt", "drop", "ignore"], "default": "prompt"}
+    }
+  },
+  "input_timeout": {"description": "补充输入等待秒数", "type": "int", "default": 60, "hint": "限制在 5～300 秒；仅 get 模式有效，等待按会话和用户隔离。"},
+  "download_timeout": {"description": "单次图片下载超时秒数", "type": "int", "default": 30},
+  "max_image_size_mb": {"description": "单张输入图片大小上限（MB）", "type": "int", "default": 20},
+  "max_concurrent_jobs": {"description": "最多同时生成的任务数量", "type": "int", "default": 2, "hint": "限制在 1～8。内存较小的机器建议使用 1。"},
+  "max_output_images": {"description": "图片工具单次发送图片数量上限", "type": "int", "default": 10, "hint": "限制在 1～50；GIF 分解超过上限会给出提示。"}
+}
