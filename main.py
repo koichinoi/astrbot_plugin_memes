@@ -64,7 +64,7 @@ class MemeMessageFilter(filter.CustomFilter):
         return any(plugin._accepts(event) for plugin in tuple(self.plugins))
 
 
-@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.1")
+@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.2")
 class MemesPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)

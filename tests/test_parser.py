@@ -53,6 +53,10 @@ class TokenTests(unittest.TestCase):
         self.assertEqual(parser.strip_prefix("示例", ["", "/"]), "示例")
         self.assertIsNone(parser.strip_prefix("示例", ["/"]))
 
+    def test_empty_prefix_list_saved_by_webui_allows_bare_commands(self):
+        self.assertEqual(parser.strip_prefix("  表情面板", []), "表情面板")
+        self.assertEqual(parser.strip_prefix("摸 自己", iter([])), "摸 自己")
+
 
 class OptionTests(unittest.TestCase):
     def setUp(self):

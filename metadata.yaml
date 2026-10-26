@@ -1,7 +1,7 @@
 name: astrbot_plugin_memes
 display_name: 表情包制作（Python 引擎）
 desc: Python 表情生成器，提供图片菜单、模板列表、搜索、统计面板、头像表情和图片工具。
-version: v1.2.1
+version: v1.2.2
 author: koichinoi (upstream by MeetWq and MemeCrafters contributors)
 repo: https://github.com/koichinoi/astrbot_plugin_memes
 astrbot_version: ">=4.0.0"

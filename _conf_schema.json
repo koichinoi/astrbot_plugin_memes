@@ -1,7 +1,7 @@
 {
   "panel_font_path": {"description": "面板中文字体路径（可选）", "type": "string", "default": "", "hint": "留空时自动使用微软雅黑、Noto Sans CJK 或文泉驿等系统中文字体。可填写 .ttf/.ttc/.otf 绝对路径；无中文字体时请安装字体或在这里指定。"},
   "engine_python_executable": {"description": "已有 Python 引擎环境的 Python 路径（可选）", "type": "string", "default": "", "hint": "留空时自动建立独立引擎环境并安装 engine_requirements.txt，避免与 AstrBot 的 Pillow 版本冲突。填写路径时使用该环境，需自行先安装 meme-generator==0.1.14。"},
-  "command_prefixes": {"description": "表情命令前缀", "type": "list", "items": {"type": "string"}, "default": [""], "hint": "默认无需前缀，直接发送 表情面板、表情列表、摸 自己 等指令。保留空字符串表示无前缀。"},
+  "command_prefixes": {"description": "表情命令前缀", "type": "list", "items": {"type": "string"}, "default": [""], "hint": "默认无需前缀，直接发送 表情面板、表情列表、摸 自己 等指令。留空列表或保留空字符串均表示无前缀。"},
   "disabled_memes": {"description": "永久禁用的模板 key", "type": "list", "items": {"type": "string"}, "default": [], "hint": "优先于聊天命令中的启用开关。修改后保存配置。"},
   "check_resources_on_startup": {"description": "启动时检查并下载 Python 引擎表情图片", "type": "bool", "default": true, "hint": "首次下载可能较久，详细进度见 python-engine/engine.log；需要对独立引擎安装目录有写权限，字体需另行安装。"},
   "use_sender_when_no_image": {"description": "缺少单张图片时使用发送者头像", "type": "bool", "default": false},

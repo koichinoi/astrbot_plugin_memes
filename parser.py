@@ -37,9 +37,13 @@ def tokenize(text: str) -> list[str]:
 
 
 def strip_prefix(text: str, prefixes: Iterable[str]) -> str | None:
-    """Remove the longest configured prefix; an empty prefix allows bare names."""
+    """Remove the longest prefix; an empty list or prefix allows bare names.
+
+    The WebUI may discard blank list entries when saving configuration.
+    """
     text = text.lstrip()
-    for prefix in sorted(set(prefixes), key=len, reverse=True):
+    configured = list(prefixes) or [""]
+    for prefix in sorted(set(configured), key=len, reverse=True):
         if text.startswith(prefix):
             return text[len(prefix):].lstrip()
     return None

@@ -214,6 +214,20 @@ class MainTests(unittest.IsolatedAsyncioTestCase):
         self.plugin.state.set_enabled(self.plugin._scope(event), self.meme.key, False)
         self.assertFalse(message_filter.filter(event, {}))
 
+    async def test_empty_prefix_list_keeps_commands_working_without_waking_chat(self):
+        self.config["command_prefixes"] = []
+        message_filter = self.plugin.on_message.test_filter
+        for command in ["表情面板", "表情列表", "示例 内容"]:
+            with self.subTest(command=command):
+                event = FakeEvent(text=command)
+                self.assertTrue(message_filter.filter(event, {}))
+                self.assertTrue(await collect(self.plugin.on_message(event)))
+                self.assertTrue(event.stopped)
+        ordinary = FakeEvent(text="今天很好")
+        self.assertFalse(message_filter.filter(ordinary, {}))
+        self.assertEqual(await collect(self.plugin.on_message(ordinary)), [])
+        self.assertFalse(ordinary.stopped)
+
     async def test_filter_removes_runtime_on_termination(self):
         message_filter = self.plugin.on_message.test_filter
         event = FakeEvent(text="/表情列表")
