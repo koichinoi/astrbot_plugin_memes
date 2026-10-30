@@ -35,6 +35,10 @@ BUILTINS = MANAGE | TOOLS | {
 STAT_PATTERN = re.compile(r"^(我的)?(全局)?(今日|今天|本日|日|本周|周|本月|月|本年|年)?表情调用统计(?:\s+(.*))?$", re.S)
 
 
+class MemeInputError(ValueError):
+    """An actionable usage hint, safe to show without runtime diagnostics."""
+
+
 @dataclass
 class Inputs:
     images: list[tuple[str, bytes]] = field(default_factory=list)
@@ -64,7 +68,7 @@ class MemeMessageFilter(filter.CustomFilter):
         return any(plugin._accepts(event) for plugin in tuple(self.plugins))
 
 
-@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.2")
+@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.3")
 class MemesPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -217,12 +221,12 @@ class MemesPlugin(Star):
         async with self.http.get(url) as response:
             response.raise_for_status()
             if response.content_length and response.content_length > limit:
-                raise ValueError("图片过大，请发送较小的图片")
+                raise MemeInputError("图片过大，请发送较小的图片")
             output = bytearray()
             async for chunk in response.content.iter_chunked(65536):
                 output.extend(chunk)
                 if len(output) > limit:
-                    raise ValueError("图片过大，请发送较小的图片")
+                    raise MemeInputError("图片过大，请发送较小的图片")
         return bytes(output)
 
     async def _image_bytes(self, image: Image) -> bytes:
@@ -235,7 +239,7 @@ class MemesPlugin(Star):
             with Path(path).open("rb") as handle:
                 data = handle.read(limit + 1)
             if len(data) > limit:
-                raise ValueError("图片过大，请发送较小的图片")
+                raise MemeInputError("图片过大，请发送较小的图片")
             return data
         return await asyncio.to_thread(read)
 
@@ -262,7 +266,7 @@ class MemesPlugin(Star):
                     url = await url
                 if url:
                     return name, await self._download(url)
-        raise ValueError("当前平台暂不支持获取这个用户的头像，请直接发送或引用图片")
+        raise MemeInputError("当前平台暂不支持获取这个用户的头像，请直接发送或引用图片")
 
     async def _collect(self, event, tokens, sources) -> Inputs:
         inputs = Inputs()
@@ -278,14 +282,14 @@ class MemesPlugin(Star):
             else:
                 inputs.texts.append(token)
             if len(inputs.images) > 50:
-                raise ValueError("一次最多输入 50 张图片")
+                raise MemeInputError("一次最多输入 50 张图片")
         return inputs
 
     async def _job(self, function, *args):
         try:
             await asyncio.wait_for(self.jobs.acquire(), timeout=1)
         except asyncio.TimeoutError:
-            raise ValueError("表情制作任务较多，请稍后重试") from None
+            raise MemeInputError("表情制作任务较多，请稍后重试") from None
         try:
             return await asyncio.to_thread(function, *args)
         finally:
@@ -293,15 +297,15 @@ class MemesPlugin(Star):
 
     def _lookup(self, name):
         if not name:
-            raise ValueError("请提供表情关键词或模板 key，例如：表情详情 petpet")
+            raise MemeInputError("请提供表情关键词或模板 key，例如：表情详情 petpet")
         found = self.backend.find(name.strip())
         if len(found) == 1:
             return found[0]
         if len(found) > 1:
-            raise ValueError("关键词对应多个模板，请改用 key：" + "、".join(m.key for m in found))
+            raise MemeInputError("关键词对应多个模板，请改用 key：" + "、".join(m.key for m in found))
         candidates = self.backend.search(name)[:5]
         suffix = "，你可能在找：" + "、".join(m.key for m in candidates) if candidates else ""
-        raise ValueError(f"找不到表情 {name}{suffix}")
+        raise MemeInputError(f"找不到表情 {name}{suffix}")
 
     def _summary(self, meme):
         return f"{meme.key}（{' / '.join(meme.info.keywords)}）"
@@ -346,7 +350,7 @@ class MemesPlugin(Star):
                 if action == "drop":
                     del values[maximum:]
                 else:
-                    raise ValueError(f"{label}数量不符，需要 {minimum}～{maximum}，实际 {len(values)}")
+                    raise MemeInputError(f"{label}数量不符，需要 {minimum}～{maximum}，实际 {len(values)}")
             if len(values) < minimum:
                 action = policy.get(f"too_few_{kind}", "prompt")
                 if action == "ignore":
@@ -354,10 +358,10 @@ class MemesPlugin(Star):
                 if action == "get":
                     missing.append(f"{minimum - len(values)} 份{label}")
                 else:
-                    raise ValueError(f"{label}数量不符，需要 {minimum}～{maximum}，实际 {len(values)}")
+                    raise MemeInputError(f"{label}数量不符，需要 {minimum}～{maximum}，实际 {len(values)}")
         if missing:
             if len(self.pending) >= 100:
-                raise ValueError("等待中的表情任务过多，请稍后重试")
+                raise MemeInputError("等待中的表情任务过多，请稍后重试")
             timeout = max(5, min(300, int(self.config.get("input_timeout", 60))))
             self.pending[(self._scope(event), self._user(event))] = Pending(meme, inputs, time.monotonic() + timeout)
             yield event.plain_result(f"请在 {timeout} 秒内补充 {'、'.join(missing)}；发送 取消表情 可取消")
@@ -385,17 +389,17 @@ class MemesPlugin(Star):
             size = 30
             pages = max(1, (len(memes) + size - 1) // size)
             if rest and not rest.isdigit():
-                raise ValueError("用法：表情列表 [页码]")
+                raise MemeInputError("用法：表情列表 [页码]")
             page = int(rest) if rest else 1
             if not 1 <= page <= pages:
-                raise ValueError(f"页码应为 1～{pages}")
+                raise MemeInputError(f"页码应为 1～{pages}")
             yield await self._panel_result(event, "catalog", {
                 "page": page, "pages": pages, "total": len(memes),
                 "items": [self._panel_item(m) for m in memes[(page - 1) * size:page * size]],
             })
         elif head == "表情搜索":
             if not rest:
-                raise ValueError("用法：表情搜索 关键词")
+                raise MemeInputError("用法：表情搜索 关键词")
             query_parts = rest.rsplit(maxsplit=1)
             page = 1
             if len(query_parts) == 2 and query_parts[1].isdigit():
@@ -403,7 +407,7 @@ class MemesPlugin(Star):
             found = [m for m in self.backend.search(rest) if self._allowed(event, m)]
             pages = max(1, (len(found) + 29) // 30)
             if not 1 <= page <= pages:
-                raise ValueError(f"页码应为 1～{pages}")
+                raise MemeInputError(f"页码应为 1～{pages}")
             yield await self._panel_result(event, "search", {
                 "query": rest, "page": page, "pages": pages, "total": len(found),
                 "items": [self._panel_item(m) for m in found[(page - 1) * 30:page * 30]],
@@ -422,10 +426,10 @@ class MemesPlugin(Star):
         elif head in MANAGE:
             global_change = head.startswith("全局")
             if not self._is_admin(event, global_change):
-                raise ValueError("此操作需要 AstrBot 管理员权限" if global_change else "此操作需要 AstrBot 管理员或 QQ 群管理员权限")
+                raise MemeInputError("此操作需要 AstrBot 管理员权限" if global_change else "此操作需要 AstrBot 管理员或 QQ 群管理员权限")
             names = tokenize(rest)
             if not names:
-                raise ValueError("请提供表情关键词或模板 key")
+                raise MemeInputError("请提供表情关键词或模板 key")
             memes = [self._lookup(name) for name in names]
             enabled = "启用" in head
             for meme in memes:
@@ -461,7 +465,7 @@ class MemesPlugin(Star):
         elif head in TOOLS:
             inputs = await self._collect(event, tokenize(rest) + tokenize(reply), sources)
             if not inputs.images:
-                raise ValueError("请发送或引用需要处理的图片")
+                raise MemeInputError("请发送或引用需要处理的图片")
             output = await self._job(self.backend.operate, head, [data for _, data in inputs.images], " ".join(inputs.texts))
             if isinstance(output, str):
                 yield event.plain_result(output)
@@ -469,7 +473,7 @@ class MemesPlugin(Star):
                 frames = output if isinstance(output, list) else [output]
                 maximum = max(1, min(50, int(self.config.get("max_output_images", 10))))
                 if len(frames) > maximum:
-                    raise ValueError(f"操作产生 {len(frames)} 张图片，超过发送上限 {maximum}；请调高 max_output_images 或减少帧数")
+                    raise MemeInputError(f"操作产生 {len(frames)} 张图片，超过发送上限 {maximum}；请调高 max_output_images 或减少帧数")
                 for data in frames:
                     yield event.chain_result([Image.fromBytes(data)])
         elif head == "随机表情":
@@ -478,7 +482,7 @@ class MemesPlugin(Star):
                 and m.info.params.min_images <= len(inputs.images) <= m.info.params.max_images
                 and m.info.params.min_texts <= len(inputs.texts) <= m.info.params.max_texts]
             if not candidates:
-                raise ValueError("找不到符合图片和文字数量的可用表情")
+                raise MemeInputError("找不到符合图片和文字数量的可用表情")
             meme = random.choice(candidates)
             if self.config.get("random_show_info", True):
                 yield event.plain_result("随机表情：" + self._summary(meme))
@@ -489,7 +493,7 @@ class MemesPlugin(Star):
             matches = [m for m in matches if self._allowed(event, m.meme)]
             if matches:
                 if len(matches) > 1:
-                    raise ValueError("关键词对应多个模板，请使用 key：" + "、".join(m.meme.key for m in matches))
+                    raise MemeInputError("关键词对应多个模板，请使用 key：" + "、".join(m.meme.key for m in matches))
                 match = matches[0]
                 tokens, options = await self._job(
                     parse_options, match.meme,
@@ -505,7 +509,7 @@ class MemesPlugin(Star):
             elif pending_key in self.pending:
                 pending = self.pending.pop(pending_key)
                 if not self._allowed(event, pending.meme):
-                    raise ValueError("该表情已禁用，已取消等待输入")
+                    raise MemeInputError("该表情已禁用，已取消等待输入")
                 extra = await self._collect(event, tokenize(text) + tokenize(reply), sources)
                 pending.inputs.images.extend(extra.images)
                 pending.inputs.texts.extend(extra.texts)
@@ -532,7 +536,9 @@ class MemesPlugin(Star):
             if not self.backend:
                 if is_builtin:
                     event.stop_event()
-                    yield event.plain_result("表情生成引擎未就绪，请检查依赖安装和启动日志。" + (f"\n{self.startup_error}" if self.startup_error else ""))
+                    logger.error("[memes] 表情生成引擎未就绪：%s", self.startup_error or "尚未完成初始化")
+                    if not event.get_group_id():
+                        yield event.plain_result("表情生成引擎未就绪，请检查依赖安装和启动日志。" + (f"\n{self.startup_error}" if self.startup_error else ""))
                 return
             matches = match_meme(self.backend.memes, text)
             if not is_builtin and pending_key not in self.pending and not any(self._allowed(event, m.meme) for m in matches):
@@ -542,12 +548,19 @@ class MemesPlugin(Star):
             async for result in self._dispatch(event, text, reply, sources):
                 event.stop_event()
                 yield result
-        except (ValueError, aiohttp.ClientError, TimeoutError, OSError) as exc:
+        except MemeInputError as exc:
             if handled:
                 event.stop_event()
-                yield event.plain_result(f"表情制作失败：{exc}")
+                yield event.plain_result(f"表情用法提示：{exc}")
+        except (ValueError, aiohttp.ClientError, TimeoutError, OSError) as exc:
+            logger.exception("[memes] 表情制作失败")
+            if handled:
+                event.stop_event()
+                if not event.get_group_id():
+                    yield event.plain_result(f"表情制作失败：{exc}")
         except Exception:
             logger.exception("[memes] 处理表情指令失败")
             if handled:
                 event.stop_event()
-                yield event.plain_result("表情处理失败，请查看 AstrBot 日志中的 [memes] 记录")
+                if not event.get_group_id():
+                    yield event.plain_result("表情处理失败，请查看 AstrBot 日志中的 [memes] 记录")

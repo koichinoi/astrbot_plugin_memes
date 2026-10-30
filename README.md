@@ -17,7 +17,7 @@
 - 建议 Python `3.12`。`metadata.yaml` 当前声明 AstrBot `>=4.0.0`；实际验证环境与检查范围见 [VALIDATION.md](VALIDATION.md)。
 - 不依赖 NoneBot，也不需要配置大模型或单独运行生成器 HTTP 服务。
 
-本版为 `v1.2.2`。`meme-generator` 在 PyPI 上的 0.1.x 是上述 Python 项目，0.2.0 起则是 Rust 项目的 Python 绑定，二者同名但接口不同，详见[上游安装说明](https://github.com/MemeCrafters/meme-generator/wiki/本地安装)。本插件已经按 Python 0.1.14 的接口重写适配层。
+本版为 `v1.2.3`。`meme-generator` 在 PyPI 上的 0.1.x 是上述 Python 项目，0.2.0 起则是 Rust 项目的 Python 绑定，二者同名但接口不同，详见[上游安装说明](https://github.com/MemeCrafters/meme-generator/wiki/本地安装)。本插件已经按 Python 0.1.14 的接口重写适配层。
 
 ## 安装
 
@@ -97,6 +97,8 @@ AstrBot/
 引擎的下载源、额外模板目录、GIF 限制等由其独立的 `config.toml` 处理。本插件将它保存在插件数据目录下的 `python-engine/engine-data/config/config.toml`，通常完整位置为 `data/plugin_data/astrbot_plugin_memes/python-engine/engine-data/config/config.toml`；缓存和数据也保存在相邻的专用目录中。使用已有引擎 Python 路径时，仍使用这份插件专用配置。
 
 例如在配置文件中可用 `[resource]` 的 `resource_url` 指定单一资源地址，或用 `resource_urls` 配置多个候选地址；`[meme]` 的 `meme_dirs` 用于加载额外模板目录，`[gif]` 的 `gif_max_size`、`gif_max_frames` 控制 GIF 输出。修改后重启 AstrBot。字段定义见[引擎配置源码](https://github.com/MemeCrafters/meme-generator/blob/main/meme_generator/config.py)和[配置说明](https://github.com/MemeCrafters/meme-generator/wiki/配置文件)。本插件将目录定位到专用环境，其余字段沿用上游定义。
+
+群聊中的生成、下载及程序异常只写入后台日志，不向群内发送错误报告；引擎未就绪时同样静默处理。缺图、数量、权限等操作提示仍保留，私聊仍可收到失败反馈。
 
 ## 命令
 

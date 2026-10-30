@@ -432,9 +432,42 @@ class MainTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_failed_generation_is_not_recorded(self):
         self.backend.generate = lambda *args: (_ for _ in ()).throw(ValueError("bad image"))
-        results = await collect(self.plugin.on_message(FakeEvent(text="/示例 内容")))
-        self.assertIn("bad image", text_of(results))
+        event = FakeEvent(text="/示例 内容")
+        with self.assertLogs("memes.test", level="ERROR") as logs:
+            results = await collect(self.plugin.on_message(event))
+        self.assertEqual(results, [])
+        self.assertTrue(event.stopped)
+        self.assertIn("bad image", "\n".join(logs.output))
         self.assertEqual(self.plugin.state.statistics(), [])
+
+    async def test_group_runtime_failures_are_logged_without_chat_reports(self):
+        for error in [OSError("private path"), TimeoutError("request timeout"), RuntimeError("internal traceback")]:
+            with self.subTest(error=type(error).__name__):
+                def fail(*args):
+                    raise error
+                self.backend.generate = fail
+                event = FakeEvent(text="/示例 内容")
+                with self.assertLogs("memes.test", level="ERROR") as logs:
+                    self.assertEqual(await collect(self.plugin.on_message(event)), [])
+                self.assertTrue(event.stopped)
+                self.assertIn(str(error), "\n".join(logs.output))
+                self.assertEqual(self.plugin.state.statistics(), [])
+
+    async def test_private_chat_retains_failure_feedback(self):
+        self.backend.generate = lambda *args: (_ for _ in ()).throw(ValueError("bad image"))
+        event = FakeEvent(text="/示例 内容", group="")
+        with self.assertLogs("memes.test", level="ERROR"):
+            results = await collect(self.plugin.on_message(event))
+        self.assertIn("表情制作失败", text_of(results))
+        self.assertTrue(event.stopped)
+
+    async def test_group_network_failure_has_no_report(self):
+        self.plugin._image_bytes = AsyncMock(side_effect=main.aiohttp.ClientError("download failed"))
+        event = FakeEvent([Plain("/示例 内容"), Image("input")])
+        with self.assertLogs("memes.test", level="ERROR") as logs:
+            self.assertEqual(await collect(self.plugin.on_message(event)), [])
+        self.assertTrue(event.stopped)
+        self.assertIn("download failed", "\n".join(logs.output))
 
     async def test_pending_expiry_and_cancel_do_not_consume_other_users(self):
         event = FakeEvent(text="任意补充")
@@ -457,7 +490,13 @@ class MainTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("engine unavailable", self.plugin.startup_error)
         event = FakeEvent(text="/表情列表")
         self.assertTrue(self.plugin._accepts(event))
-        self.assertIn("引擎未就绪", text_of(await collect(self.plugin.on_message(event))))
+        with self.assertLogs("memes.test", level="ERROR") as logs:
+            self.assertEqual(await collect(self.plugin.on_message(event)), [])
+        self.assertIn("engine unavailable", "\n".join(logs.output))
+        self.assertTrue(event.stopped)
+        with self.assertLogs("memes.test", level="ERROR"):
+            results = await collect(self.plugin.on_message(FakeEvent(text="/表情列表", group="")))
+        self.assertIn("引擎未就绪", text_of(results))
         session = self.plugin.http
         await self.plugin.terminate()
         self.plugin = None
