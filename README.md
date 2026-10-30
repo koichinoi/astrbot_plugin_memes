@@ -17,7 +17,7 @@
 - 建议 Python `3.12`。`metadata.yaml` 当前声明 AstrBot `>=4.0.0`；实际验证环境与检查范围见 [VALIDATION.md](VALIDATION.md)。
 - 不依赖 NoneBot，也不需要配置大模型或单独运行生成器 HTTP 服务。
 
-本版为 `v1.2.3`。`meme-generator` 在 PyPI 上的 0.1.x 是上述 Python 项目，0.2.0 起则是 Rust 项目的 Python 绑定，二者同名但接口不同，详见[上游安装说明](https://github.com/MemeCrafters/meme-generator/wiki/本地安装)。本插件已经按 Python 0.1.14 的接口重写适配层。
+本版为 `v1.2.4`。`meme-generator` 在 PyPI 上的 0.1.x 是上述 Python 项目，0.2.0 起则是 Rust 项目的 Python 绑定，二者同名但接口不同，详见[上游安装说明](https://github.com/MemeCrafters/meme-generator/wiki/本地安装)。本插件已经按 Python 0.1.14 的接口重写适配层。
 
 ## 安装
 
@@ -98,7 +98,7 @@ AstrBot/
 
 例如在配置文件中可用 `[resource]` 的 `resource_url` 指定单一资源地址，或用 `resource_urls` 配置多个候选地址；`[meme]` 的 `meme_dirs` 用于加载额外模板目录，`[gif]` 的 `gif_max_size`、`gif_max_frames` 控制 GIF 输出。修改后重启 AstrBot。字段定义见[引擎配置源码](https://github.com/MemeCrafters/meme-generator/blob/main/meme_generator/config.py)和[配置说明](https://github.com/MemeCrafters/meme-generator/wiki/配置文件)。本插件将目录定位到专用环境，其余字段沿用上游定义。
 
-群聊中的生成、下载及程序异常只写入后台日志，不向群内发送错误报告；引擎未就绪时同样静默处理。缺图、数量、权限等操作提示仍保留，私聊仍可收到失败反馈。
+群聊中的生成、下载及程序异常只写入后台日志，不向群内发送错误报告；引擎未就绪时同样静默处理。图片/文字数量不符提示由 `show_parameter_mismatch_tip` 控制，默认关闭，群聊和私聊均生效；关闭时仅记日志。权限、get 模式补图等操作提示仍保留，私聊仍可收到运行失败反馈。
 
 ## 命令
 
@@ -178,6 +178,7 @@ gif变速 2x [附 GIF 或引用 GIF]
 | `use_default_when_no_text` | `false` | 需要文字但没有文字输入时使用模板默认文字 |
 | `random_show_info` | `true` | 随机制作前显示模板名称 |
 | `allow_group_admin` | `true` | 允许 OneBot QQ 群主和管理员修改本群开关 |
+| `show_parameter_mismatch_tip` | `false` | 是否发送图片/文字数量不符提示；关闭后仅记后台日志，不影响 get 补图、drop 或 ignore |
 | `params_mismatch_policy.too_few_image` | `"prompt"` | 图片不足：`prompt` 提示，`get` 等待补充，`ignore` 忽略 |
 | `params_mismatch_policy.too_few_text` | `"prompt"` | 文字不足：同上 |
 | `params_mismatch_policy.too_much_image` | `"prompt"` | 图片过多：`prompt` 提示，`drop` 丢弃超出部分，`ignore` 忽略 |

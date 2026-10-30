@@ -39,6 +39,10 @@ class MemeInputError(ValueError):
     """An actionable usage hint, safe to show without runtime diagnostics."""
 
 
+class MemeParameterMismatch(MemeInputError):
+    """An image/text count hint controlled independently of other usage hints."""
+
+
 @dataclass
 class Inputs:
     images: list[tuple[str, bytes]] = field(default_factory=list)
@@ -68,7 +72,7 @@ class MemeMessageFilter(filter.CustomFilter):
         return any(plugin._accepts(event) for plugin in tuple(self.plugins))
 
 
-@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.3")
+@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.4")
 class MemesPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -350,7 +354,7 @@ class MemesPlugin(Star):
                 if action == "drop":
                     del values[maximum:]
                 else:
-                    raise MemeInputError(f"{label}数量不符，需要 {minimum}～{maximum}，实际 {len(values)}")
+                    raise MemeParameterMismatch(f"{label}数量不符，需要 {minimum}～{maximum}，实际 {len(values)}")
             if len(values) < minimum:
                 action = policy.get(f"too_few_{kind}", "prompt")
                 if action == "ignore":
@@ -358,7 +362,7 @@ class MemesPlugin(Star):
                 if action == "get":
                     missing.append(f"{minimum - len(values)} 份{label}")
                 else:
-                    raise MemeInputError(f"{label}数量不符，需要 {minimum}～{maximum}，实际 {len(values)}")
+                    raise MemeParameterMismatch(f"{label}数量不符，需要 {minimum}～{maximum}，实际 {len(values)}")
         if missing:
             if len(self.pending) >= 100:
                 raise MemeInputError("等待中的表情任务过多，请稍后重试")
@@ -551,6 +555,10 @@ class MemesPlugin(Star):
         except MemeInputError as exc:
             if handled:
                 event.stop_event()
+                if isinstance(exc, MemeParameterMismatch):
+                    logger.info("[memes] 输入数量不符：%s", exc)
+                    if not self.config.get("show_parameter_mismatch_tip", False):
+                        return
                 yield event.plain_result(f"表情用法提示：{exc}")
         except (ValueError, aiohttp.ClientError, TimeoutError, OSError) as exc:
             logger.exception("[memes] 表情制作失败")

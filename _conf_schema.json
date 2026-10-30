@@ -9,6 +9,7 @@
   "use_default_when_no_text": {"description": "未输入文字时使用模板默认文字", "type": "bool", "default": false},
   "random_show_info": {"description": "随机制作时显示模板名称", "type": "bool", "default": true},
   "allow_group_admin": {"description": "允许 OneBot QQ 群主和管理员管理本群表情开关", "type": "bool", "default": true, "hint": "全局开关仍仅限 AstrBot 管理员；其他平台仅识别 AstrBot 管理员。"},
+  "show_parameter_mismatch_tip": {"description": "发送图片/文字数量不符提示", "type": "bool", "default": false, "hint": "控制“图片/文字数量不符，需要…实际…”这类回复，群聊和私聊均生效。默认关闭，仅记录后台日志；开启后发送简短提示。不影响 get 模式的补充输入提示，以及 drop、ignore 的处理方式。"},
   "params_mismatch_policy": {
     "description": "图片和文字数量不匹配时的处理", "type": "object",
     "items": {

@@ -413,6 +413,7 @@ class MainTests(unittest.IsolatedAsyncioTestCase):
         self.plugin._avatar.assert_not_awaited()
 
     async def test_parameter_mismatch_prompt_drop_and_ignore(self):
+        self.config["show_parameter_mismatch_tip"] = True
         prompt = FakeEvent(text="/示例 太 多")
         self.assertIn("文字数量不符", text_of(await collect(self.plugin.on_message(prompt))))
         self.assertTrue(prompt.stopped)
@@ -429,6 +430,38 @@ class MainTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(await collect(self.plugin.on_message(dropped))), 1)
         self.assertEqual(self.backend.calls[0][2], ["太"])
         self.assertTrue(dropped.stopped)
+
+    async def test_count_hint_switch_covers_default_off_and_enabled_in_all_chats(self):
+        self.plugin._image_bytes = AsyncMock(return_value=b"input")
+        for group in ["100", ""]:
+            for setting in [None, False, True]:
+                if setting is None:
+                    self.config.pop("show_parameter_mismatch_tip", None)
+                else:
+                    self.config["show_parameter_mismatch_tip"] = setting
+                for kind in ["image_few", "image_many", "text_few", "text_many"]:
+                    with self.subTest(group=group, setting=setting, kind=kind):
+                        params = self.meme.info.params
+                        params.min_images, params.max_images = (1, 1) if kind == "image_few" else (0, 0)
+                        params.min_texts = params.max_texts = 1
+                        segments = [Plain("/示例 内容")]
+                        if kind == "image_many":
+                            segments.append(Image("input"))
+                        elif kind == "text_few":
+                            segments = [Plain("/示例")]
+                        elif kind == "text_many":
+                            segments = [Plain("/示例 太 多")]
+                        event = FakeEvent(segments, group=group)
+                        with self.assertLogs("memes.test", level="INFO") as logs:
+                            results = await collect(self.plugin.on_message(event))
+                        self.assertTrue(event.stopped)
+                        if setting:
+                            self.assertIn("数量不符", text_of(results))
+                        else:
+                            self.assertEqual(results, [])
+                        self.assertIn("数量不符", "\n".join(logs.output))
+                        self.assertEqual(self.backend.calls, [])
+                        self.assertEqual(self.plugin.state.statistics(), [])
 
     async def test_failed_generation_is_not_recorded(self):
         self.backend.generate = lambda *args: (_ for _ in ()).throw(ValueError("bad image"))
