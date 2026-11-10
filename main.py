@@ -72,7 +72,7 @@ class MemeMessageFilter(filter.CustomFilter):
         return any(plugin._accepts(event) for plugin in tuple(self.plugins))
 
 
-@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.5")
+@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.6")
 class MemesPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -155,7 +155,10 @@ class MemesPlugin(Star):
         )
 
     def _allowed(self, event, meme) -> bool:
-        return meme.key not in self.config.get("disabled_memes", []) and self.state.enabled(self._scope(event), meme.key)
+        disabled = {name.strip().casefold() for name in self.config.get("disabled_memes", [])}
+        if any(name.casefold() in disabled for name in (meme.key, *meme.info.keywords)):
+            return False
+        return self.state.enabled(self._scope(event), meme.key)
 
     def _is_admin(self, event, global_change=False) -> bool:
         if event.is_admin():
@@ -420,14 +423,16 @@ class MemesPlugin(Star):
         elif head in {"表情详情", "表情帮助", "表情示例"}:
             meme = self._lookup(rest)
             p = meme.info.params
+            enabled = self._allowed(event, meme)
             yield await self._panel_result(event, "detail", {
                 **self._panel_item(meme), "tags": sorted(getattr(meme.info, "tags", [])),
                 "default_texts": list(p.default_texts),
                 "options": [option_help(option) for option in p.options],
-                "enabled": self._allowed(event, meme),
+                "enabled": enabled,
             })
-            preview = await self._job(self.backend.preview, meme)
-            yield event.chain_result([Image.fromBytes(preview)])
+            if enabled:
+                preview = await self._job(self.backend.preview, meme)
+                yield event.chain_result([Image.fromBytes(preview)])
         elif head in MANAGE:
             global_change = head.startswith("全局")
             if not self._is_admin(event, global_change):

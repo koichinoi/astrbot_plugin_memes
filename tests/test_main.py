@@ -277,6 +277,35 @@ class MainTests(unittest.IsolatedAsyncioTestCase):
         self.assert_image_results(await collect(self.plugin.on_message(other_group)))
         self.assertEqual(self.backend.panel_calls[-1][1]["total"], 63)
 
+    async def test_permanent_keyword_ban_blocks_all_aliases_random_selection_and_preview(self):
+        blocked = make_meme("look_leg", "看看腿", min_images=1, max_images=1, min_texts=0, max_texts=0)
+        blocked.info.keywords.append("看看脚")
+        self.backend.memes = [blocked]
+        self.config["disabled_memes"] = [" 看看脚 "]
+        self.plugin._avatar = AsyncMock(return_value=("发送者", b"avatar"))
+
+        for command in ["看看腿 自己", "看看脚 自己", "look_leg 自己"]:
+            with self.subTest(command=command):
+                event = FakeEvent(text=command)
+                self.plugin.state.set_enabled(self.plugin._scope(event), blocked.key, True)
+                self.assertFalse(self.plugin._accepts(event))
+                self.assertEqual(await collect(self.plugin.on_message(event)), [])
+        self.plugin._avatar.assert_not_awaited()
+
+        with self.assertLogs("memes.test", level="INFO"):
+            self.assertEqual(await collect(self.plugin.on_message(FakeEvent(text="随机表情 自己"))), [])
+        self.assertEqual(self.backend.calls, [])
+
+        self.assert_image_results(await collect(self.plugin.on_message(FakeEvent(text="表情搜索 看看腿"))))
+        self.assertEqual(self.backend.panel_calls[-1][1]["total"], 0)
+        self.assert_image_results(await collect(self.plugin.on_message(FakeEvent(text="表情详情 看看脚"))))
+        self.assertFalse(self.backend.panel_calls[-1][1]["enabled"])
+
+        self.config["disabled_memes"] = [" LOOK_LEG "]
+        self.assertFalse(self.plugin._accepts(FakeEvent(text="看看腿 自己")))
+        self.config["disabled_memes"] = []
+        self.assertTrue(self.plugin._accepts(FakeEvent(text="看看腿 自己")))
+
     async def test_invalid_catalog_page_stays_a_concise_text_error(self):
         results = await collect(self.plugin.on_message(FakeEvent(text="/表情列表 999")))
         self.assertIn("页码", text_of(results))

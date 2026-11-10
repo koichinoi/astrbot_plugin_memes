@@ -17,7 +17,7 @@
 - 建议 Python `3.12`。`metadata.yaml` 当前声明 AstrBot `>=4.0.0`；实际验证环境与检查范围见 [VALIDATION.md](VALIDATION.md)。
 - 不依赖 NoneBot，也不需要配置大模型或单独运行生成器 HTTP 服务。
 
-本版为 `v1.2.5`。`meme-generator` 在 PyPI 上的 0.1.x 是上述 Python 项目，0.2.0 起则是 Rust 项目的 Python 绑定，二者同名但接口不同，详见[上游安装说明](https://github.com/MemeCrafters/meme-generator/wiki/本地安装)。本插件已经按 Python 0.1.14 的接口重写适配层。
+本版为 `v1.2.6`。`meme-generator` 在 PyPI 上的 0.1.x 是上述 Python 项目，0.2.0 起则是 Rust 项目的 Python 绑定，二者同名但接口不同，详见[上游安装说明](https://github.com/MemeCrafters/meme-generator/wiki/本地安装)。本插件已经按 Python 0.1.14 的接口重写适配层。
 
 ## 安装
 
@@ -171,7 +171,7 @@ gif变速 2x [附 GIF 或引用 GIF]
 | --- | --- | --- |
 | `engine_python_executable` | `""` | 留空时自动建立独立引擎环境；也可填写已安装 `meme-generator==0.1.14` 的独立环境 Python 绝对路径 |
 | `command_prefixes` | `[""]` | 默认无需前缀；空列表 `[]` 也表示无需前缀 |
-| `disabled_memes` | `[]` | 永久禁用的模板 key，优先于聊天开关 |
+| `disabled_memes` | `[]` | 用模板编号或完整关键词永久禁用整个模板及其所有触发词，优先于聊天开关 |
 | `check_resources_on_startup` | `true` | 启动后在后台检查并下载 Python 引擎模板图片；字体另行安装 |
 | `use_sender_when_no_image` | `false` | 需要一张图但未提供时尝试使用发送者头像 |
 | `use_sender_for_two_images` | `true` | 需要两张图但只提供一张时，在前面补发送者头像 |
