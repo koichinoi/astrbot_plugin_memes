@@ -463,6 +463,42 @@ class MainTests(unittest.IsolatedAsyncioTestCase):
                         self.assertEqual(self.backend.calls, [])
                         self.assertEqual(self.plugin.state.statistics(), [])
 
+    async def test_bare_random_uses_sender_avatar_when_no_exact_template_matches(self):
+        self.config["use_sender_when_no_image"] = True
+        self.backend.memes = [make_meme("avatar", "头像模板", min_images=1, max_images=1, min_texts=0, max_texts=0)]
+        self.plugin._avatar = AsyncMock(return_value=("发送者", b"avatar"))
+        event = FakeEvent(text="随机表情")
+        results = await collect(self.plugin.on_message(event))
+        self.plugin._avatar.assert_awaited_once_with(event, event.get_sender_id())
+        self.assertEqual(self.backend.calls, [("avatar", [("发送者", b"avatar")], [], {})])
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0].chain[-1], Image)
+
+    async def test_random_own_avatar_puts_caption_and_generated_image_in_one_result(self):
+        self.backend.memes = [make_meme("dog_ear_hat", "狗耳帽", min_images=1, max_images=1, min_texts=0, max_texts=0)]
+        self.plugin._avatar = AsyncMock(return_value=("发送者", b"avatar"))
+        event = FakeEvent(text="随机表情 自己")
+        results = await collect(self.plugin.on_message(event))
+        self.assertEqual(len(results), 1)
+        caption, image = results[0].chain
+        self.assertIn("狗耳帽", caption.text)
+        self.assertEqual(base64.b64decode(image.file.removeprefix("base64://")), b"GIF89a-generated")
+        self.plugin._avatar.assert_awaited_once_with(event, event.get_sender_id())
+        self.assertEqual(self.plugin.state.statistics(scope=self.plugin._scope(event)), [("dog_ear_hat", 1)])
+
+    async def test_random_with_no_matching_template_obeys_mismatch_hint_switch(self):
+        for show_hint in [False, True]:
+            with self.subTest(show_hint=show_hint):
+                self.config["show_parameter_mismatch_tip"] = show_hint
+                event = FakeEvent(text="随机表情")
+                with self.assertLogs("memes.test", level="INFO"):
+                    results = await collect(self.plugin.on_message(event))
+                self.assertTrue(event.stopped)
+                if show_hint:
+                    self.assertIn("找不到符合图片和文字数量的可用表情", text_of(results))
+                else:
+                    self.assertEqual(results, [])
+
     async def test_failed_generation_is_not_recorded(self):
         self.backend.generate = lambda *args: (_ for _ in ()).throw(ValueError("bad image"))
         event = FakeEvent(text="/示例 内容")

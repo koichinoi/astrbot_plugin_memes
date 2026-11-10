@@ -72,7 +72,7 @@ class MemeMessageFilter(filter.CustomFilter):
         return any(plugin._accepts(event) for plugin in tuple(self.plugins))
 
 
-@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.4")
+@register("astrbot_plugin_memes", "MemeCrafters contributors / AstrBot port", "Python 引擎表情包制作、图片面板与图片工具", "1.2.5")
 class MemesPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -332,7 +332,7 @@ class MemesPlugin(Star):
         data = await self._job(self.backend.render_panel, kind, payload)
         return event.chain_result([Image.fromBytes(data)])
 
-    async def _produce(self, event, meme, inputs):
+    async def _produce(self, event, meme, inputs, *, caption=""):
         params = meme.info.params
         if not inputs.images and params.min_images == 1 and self.config.get("use_sender_when_no_image", False):
             inputs.images.append(await self._avatar(event, str(event.get_sender_id())))
@@ -375,7 +375,8 @@ class MemesPlugin(Star):
                 inputs.images[index] = (name, inputs.images[index][1])
         data = await self._job(self.backend.generate, meme, inputs.images, inputs.texts, inputs.options)
         self.state.record(self._scope(event), self._user(event), meme.key)
-        yield event.chain_result([Image.fromBytes(data)])
+        image = Image.fromBytes(data)
+        yield event.chain_result([Plain(caption + "\n"), image] if caption else [image])
 
     async def _dispatch(self, event, text, reply, sources):
         # split also accepts newlines and tabs between the command and arguments.
@@ -482,15 +483,17 @@ class MemesPlugin(Star):
                     yield event.chain_result([Image.fromBytes(data)])
         elif head == "随机表情":
             inputs = await self._collect(event, tokenize(rest) + tokenize(reply), sources)
-            candidates = [m for m in self.backend.memes if self._allowed(event, m)
-                and m.info.params.min_images <= len(inputs.images) <= m.info.params.max_images
-                and m.info.params.min_texts <= len(inputs.texts) <= m.info.params.max_texts]
+            eligible = [m for m in self.backend.memes
+                if m.info.params.min_texts <= len(inputs.texts) <= m.info.params.max_texts
+                and self._allowed(event, m)]
+            candidates = [m for m in eligible if m.info.params.min_images <= len(inputs.images) <= m.info.params.max_images]
+            if not candidates and not inputs.images and self.config.get("use_sender_when_no_image", False):
+                candidates = [m for m in eligible if m.info.params.min_images == 1]
             if not candidates:
-                raise MemeInputError("找不到符合图片和文字数量的可用表情")
+                raise MemeParameterMismatch("找不到符合图片和文字数量的可用表情")
             meme = random.choice(candidates)
-            if self.config.get("random_show_info", True):
-                yield event.plain_result("随机表情：" + self._summary(meme))
-            async for result in self._produce(event, meme, inputs):
+            caption = "随机表情：" + self._summary(meme) if self.config.get("random_show_info", True) else ""
+            async for result in self._produce(event, meme, inputs, caption=caption):
                 yield result
         else:
             matches = match_meme(self.backend.memes, text)

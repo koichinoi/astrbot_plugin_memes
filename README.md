@@ -17,7 +17,7 @@
 - 建议 Python `3.12`。`metadata.yaml` 当前声明 AstrBot `>=4.0.0`；实际验证环境与检查范围见 [VALIDATION.md](VALIDATION.md)。
 - 不依赖 NoneBot，也不需要配置大模型或单独运行生成器 HTTP 服务。
 
-本版为 `v1.2.4`。`meme-generator` 在 PyPI 上的 0.1.x 是上述 Python 项目，0.2.0 起则是 Rust 项目的 Python 绑定，二者同名但接口不同，详见[上游安装说明](https://github.com/MemeCrafters/meme-generator/wiki/本地安装)。本插件已经按 Python 0.1.14 的接口重写适配层。
+本版为 `v1.2.5`。`meme-generator` 在 PyPI 上的 0.1.x 是上述 Python 项目，0.2.0 起则是 Rust 项目的 Python 绑定，二者同名但接口不同，详见[上游安装说明](https://github.com/MemeCrafters/meme-generator/wiki/本地安装)。本插件已经按 Python 0.1.14 的接口重写适配层。
 
 ## 安装
 
@@ -112,7 +112,7 @@ AstrBot/
 | `表情详情 模板` | 查看图片、文字数量及选项，发送预览 |
 | `表情帮助 模板`、`表情示例 模板` | 查看模板说明及预览；单独 `表情帮助` 显示总帮助 |
 | `模板 图片/文字/选项` | 制作指定表情，支持引擎自带的快捷指令 |
-| `随机表情 图片/文字` | 按输入数量选择一个可用模板 |
+| `随机表情 [图片/文字]` | 按输入选择可用模板。没有图片且找不到匹配模板时，可按配置用发送者头像选择单图模板 |
 | `禁用表情 模板`、`启用表情 模板` | 修改当前群聊或私聊的开关，需要管理员权限 |
 | `全局禁用表情 模板`、`全局启用表情 模板` | 切换模板的全局默认模式，仅 AstrBot 管理员可用 |
 | `表情调用统计 [模板]` | 查看当前会话的调用次数排名 |
@@ -176,7 +176,7 @@ gif变速 2x [附 GIF 或引用 GIF]
 | `use_sender_when_no_image` | `false` | 需要一张图但未提供时尝试使用发送者头像 |
 | `use_sender_for_two_images` | `true` | 需要两张图但只提供一张时，在前面补发送者头像 |
 | `use_default_when_no_text` | `false` | 需要文字但没有文字输入时使用模板默认文字 |
-| `random_show_info` | `true` | 随机制作前显示模板名称 |
+| `random_show_info` | `true` | 随机制作成功后，在同一条消息中附上模板名称 |
 | `allow_group_admin` | `true` | 允许 OneBot QQ 群主和管理员修改本群开关 |
 | `show_parameter_mismatch_tip` | `false` | 是否发送图片/文字数量不符提示；关闭后仅记后台日志，不影响 get 补图、drop 或 ignore |
 | `params_mismatch_policy.too_few_image` | `"prompt"` | 图片不足：`prompt` 提示，`get` 等待补充，`ignore` 忽略 |
